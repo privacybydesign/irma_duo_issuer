@@ -507,9 +507,20 @@ func verifyAndExtract(pdfData []byte) ([]map[string]string, error) {
 	return attributeSet, nil
 }
 
-// Command to read attributes from a given PDF file. Used for debugging and
-// such.
-func cmdReadAttributes(path string) {
+// Command to read attributes from PDF files and dump it's output. Used for
+// debugging and such.
+func cmdReadPDFs(paths []string) {
+	for i, path := range paths {
+		if i != 0 {
+			fmt.Println()
+		}
+		fmt.Println("Processing:", path)
+		cmdReadSinglePDF(path)
+	}
+}
+
+// Command to read a single PDF file and dum it's output.
+func cmdReadSinglePDF(path string) {
 	pdfData, err := readFile(path)
 	if err != nil {
 		fmt.Println("could not read input PDF:", err)
@@ -556,12 +567,12 @@ func main() {
 	}
 	switch flag.Arg(0) {
 	case "read", "extract": // not sure what to call this
-		if flag.NArg() != 2 {
-			fmt.Fprintln(flag.CommandLine.Output(), "Provide exactly one PDF path to \"read\".")
+		if flag.NArg() < 2 {
+			fmt.Fprintln(flag.CommandLine.Output(), "Provide at least one PDF path to \"read\".")
 			flag.Usage()
 			return
 		}
-		cmdReadAttributes(flag.Arg(1))
+		cmdReadPDFs(flag.Args()[1:])
 	case "help", "usage":
 		flag.Usage()
 	default:
