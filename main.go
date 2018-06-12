@@ -23,8 +23,10 @@ import (
 
 // Flags parsed at program startup and never modified afterwards.
 var (
-	tmpDir  string
-	certDir string
+	tmpDir      string
+	certDir     string
+	enableDebug bool
+	keepOutput  bool
 )
 
 type ExtractError struct {
@@ -213,13 +215,17 @@ func extractAttributes(pdfData []byte) (map[string]string, error) {
 		return nil, err
 	}
 	defer infile.Close()
-	defer os.Remove(infile.Name())
+	if !keepOutput {
+		defer os.Remove(infile.Name())
+	}
 	outfile, err := ioutil.TempFile(tmpDir, "duo-verified-html-")
 	if err != nil {
 		return nil, err
 	}
 	defer outfile.Close()
-	defer os.Remove(outfile.Name())
+	if !keepOutput {
+		defer os.Remove(outfile.Name())
+	}
 
 	_, err = infile.Write(pdfData)
 	if err != nil {
@@ -235,6 +241,10 @@ func extractAttributes(pdfData []byte) (map[string]string, error) {
 		"--process-nontext", "0", // don't extract images (faster!)
 		infile.Name(),  // input
 		outfile.Name()) // output
+	if enableDebug {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 	err = cmd.Run()
 	if err != nil {
 		return nil, &ExtractError{"run pdf2htmlEX", err}
@@ -424,6 +434,8 @@ func main() {
 
 	flag.StringVar(&tmpDir, "tmpdir", "tmp", "Where to put temporary files for the pdf2htmlEX command")
 	flag.StringVar(&certDir, "certs", "certs", "Parent certificate directory (*.der)")
+	flag.BoolVar(&enableDebug, "debug", false, "Enable debug logging")
+	flag.BoolVar(&keepOutput, "keepoutput", false, "Do not remove temporary files")
 	flag.Parse()
 
 	if flag.NArg() < 1 {
