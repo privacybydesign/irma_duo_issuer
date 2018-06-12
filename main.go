@@ -203,7 +203,7 @@ func verifySignature(sigData []byte, pool *x509.CertPool) ([]byte, error) {
 
 // Extracts all attributes from a PDF file for use by IRMA, by first converting
 // to HTML and then parsing it.
-func extractAttributes(pdfData []byte) (map[string]string, error) {
+func extractAttributes(pdfData []byte) ([]map[string]string, error) {
 	// Sadly we have to write temporary files:
 	// https://github.com/coolwanglu/pdf2htmlEX/issues/638
 
@@ -237,7 +237,6 @@ func extractAttributes(pdfData []byte) (map[string]string, error) {
 	}
 
 	cmd := exec.Command("pdf2htmlEX",
-		"-l", "1", // only the first page
 		"--process-nontext", "0", // don't extract images (faster!)
 		infile.Name(),  // input
 		outfile.Name()) // output
@@ -258,35 +257,62 @@ func extractAttributes(pdfData []byte) (map[string]string, error) {
 	// Extract raw attributes from the HTML. These are the keys as used in the
 	// PDF document.
 	doc := soup.HTMLParse(string(htmlData))
+	body := doc.Find("body")
+	var container soup.Root
+	for _, child := range getSoupChildren(body) {
+		if child.Attrs()["id"] == "page-container" {
+			container = child
+		}
+	}
+	if container.Pointer == nil {
+		return nil, &ExtractError{"cannot parse HTML: cannot find page container", nil}
+	}
+	attributeSet := make([]map[string]string, 0, 1)
+	for _, page := range getSoupChildren(container) {
+		if page.Pointer.Type != html.ElementNode {
+			continue
+		}
+		attributes, ok := extractSinglePage(page)
+		if !ok {
+			continue // e.g. last page of a list of marks where no attributes exist
+		}
+		attributeSet = append(attributeSet, attributes)
+	}
+	return attributeSet, nil
+}
+
+func extractSinglePage(page soup.Root) (map[string]string, bool) {
+	validPage := false
 	lastKey := ""
 	rawAttributes := make(map[string]string)
-	for _, el := range doc.FindAll("div") {
-		child := el.Pointer.FirstChild
-		var children []*html.Node
-		for child != nil {
-			children = append(children, child)
-			child = child.NextSibling
-		}
-		if lastKey == "Instelling" && len(children) == 1 && children[0].Type == html.TextNode {
+	for _, el := range page.FindAll("div") {
+		children := getSoupChildren(el)
+		if lastKey == "Instelling" && len(children) == 1 && children[0].Pointer.Type == html.TextNode {
 			// Sometimes, a property continues on the next line.
 			// This is a heuristic to determine this case: when the previous row
 			// was a valid row and this row contains just a single value, it's
 			// probably a continuation.
-			rawAttributes[lastKey] += " " + strings.TrimSpace(children[0].Data)
+			rawAttributes[lastKey] += " " + strings.TrimSpace(children[0].NodeValue)
 			continue
 		}
 		lastKey = "" // not a continuation
 
+		if len(children) == 1 && children[0].Pointer.Type == html.TextNode {
+			if children[0].NodeValue == "Uittreksel uit het diplomaregister" {
+				validPage = true
+			}
+		}
+
 		if len(children) != 3 {
 			continue
 		}
-		if children[0].Type != html.TextNode || children[2].Type != html.TextNode {
+		if children[0].Pointer.Type != html.TextNode || children[2].Pointer.Type != html.TextNode {
 			continue
 		}
 
 		// This appears to be a valid property key
-		key := strings.TrimSpace(children[0].Data)
-		value := strings.TrimSpace(children[2].Data)
+		key := strings.TrimSpace(children[0].NodeValue)
+		value := strings.TrimSpace(children[2].NodeValue)
 		rawAttributes[key] = value
 		lastKey = key
 	}
@@ -346,7 +372,17 @@ func extractAttributes(pdfData []byte) (map[string]string, error) {
 		}
 	}
 
-	return attributes, nil
+	return attributes, validPage
+}
+
+func getSoupChildren(el soup.Root) []soup.Root {
+	child := el.Pointer.FirstChild
+	var children []soup.Root
+	for child != nil {
+		children = append(children, soup.Root{child, child.Data, nil})
+		child = child.NextSibling
+	}
+	return children
 }
 
 // List of Dutch months, as used in diploma dates.
@@ -406,7 +442,7 @@ func loadCertificate(path string) (*x509.Certificate, error) {
 
 // Take PDF data in as a byte array, verify it, and return its attributes.
 // A verification failure will result in an error.
-func verifyAndExtract(pdfData []byte) (map[string]string, error) {
+func verifyAndExtract(pdfData []byte) ([]map[string]string, error) {
 	// Load parent certificates from DUO.
 	// TODO: cache this.
 	pool := x509.NewCertPool()
@@ -433,13 +469,13 @@ func verifyAndExtract(pdfData []byte) (map[string]string, error) {
 		return nil, &ExtractError{"verify PDF", err}
 	}
 
-	attributes, err := extractAttributes(data)
+	attributeSet, err := extractAttributes(data)
 	if err != nil {
 		return nil, &ExtractError{"extract attributes", err}
 	}
 
 	// TODO: check all attributes: whether all are present and non-empty.
-	return attributes, nil
+	return attributeSet, nil
 }
 
 // Command to read attributes from a given PDF file. Used for debugging and
@@ -451,21 +487,23 @@ func cmdReadAttributes(path string) {
 		return
 	}
 
-	attributes, err := verifyAndExtract(pdfData)
+	attributeSets, err := verifyAndExtract(pdfData)
 	if err != nil {
 		fmt.Println("could not extract attributes:", err)
 		return
 	}
 
-	// Pretty-print attributes in the way they're extracted.
-	var keys []string
-	for key := range attributes {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	fmt.Println("extracted and verified attributes:")
-	for _, key := range keys {
-		fmt.Printf("  %-12s: %s\n", key, attributes[key])
+	for _, attributes := range attributeSets {
+		// Pretty-print attributes in the way they're extracted.
+		var keys []string
+		for key := range attributes {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		fmt.Println("extracted and verified attributes:")
+		for _, key := range keys {
+			fmt.Printf("  %-12s: %s\n", key, attributes[key])
+		}
 	}
 }
 
