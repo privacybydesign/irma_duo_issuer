@@ -272,8 +272,11 @@ func extractAttributes(pdfData []byte) ([]map[string]string, error) {
 		if page.Pointer.Type != html.ElementNode {
 			continue
 		}
-		attributes, ok := extractSinglePage(page)
-		if !ok {
+		attributes, err := extractSinglePage(page)
+		if err != nil {
+			return nil, err
+		}
+		if attributes == nil {
 			continue // e.g. last page of a list of marks where no attributes exist
 		}
 		attributeSet = append(attributeSet, attributes)
@@ -281,7 +284,7 @@ func extractAttributes(pdfData []byte) ([]map[string]string, error) {
 	return attributeSet, nil
 }
 
-func extractSinglePage(page soup.Root) (map[string]string, bool) {
+func extractSinglePage(page soup.Root) (map[string]string, error) {
 	validPage := false
 	lastKey := ""
 	rawAttributes := make(map[string]string)
@@ -344,9 +347,11 @@ func extractSinglePage(page soup.Root) (map[string]string, bool) {
 		case "Opleiding":
 			attributes["education"] = value
 		case "Aard van het examen":
+			// university etc. (e.g. WO Master)
 			attributes["degree"] = value
-		case "Profiel": // high school
-			attributes["profile"] = value
+		case "Profiel":
+			// high school (e.g. Nieuw Profiel Natuur en Techniek)
+			attributes["degree"] = value
 		case "Behaald in", "Behaald op":
 			date := parseDutchDate(value)
 			if date == "" {
@@ -372,7 +377,31 @@ func extractSinglePage(page soup.Root) (map[string]string, bool) {
 		}
 	}
 
-	return attributes, validPage
+	if !validPage {
+		return nil, nil // no attributes found on this page
+	}
+
+	requiredAttributes := map[string]bool{
+		"familyname":  true,
+		"prefix":      false,
+		"firstname":   true,
+		"gender":      true,
+		"dateofbirth": true,
+		"education":   true,
+		"degree":      true,
+		"profile":     false,
+		"achieved":    true,
+		"institute":   true,
+		"city":        true,
+	}
+
+	for key, required := range requiredAttributes {
+		if _, ok := attributes[key]; required && !ok {
+			return nil, &ExtractError{"cannot find attribute: " + key, nil}
+		}
+	}
+
+	return attributes, nil
 }
 
 func getSoupChildren(el soup.Root) []soup.Root {
