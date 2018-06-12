@@ -255,9 +255,11 @@ func extractAttributes(pdfData []byte) (map[string]string, error) {
 		return nil, err
 	}
 
-	attributes := make(map[string]string)
-
+	// Extract raw attributes from the HTML. These are the keys as used in the
+	// PDF document.
 	doc := soup.HTMLParse(string(htmlData))
+	lastKey := ""
+	rawAttributes := make(map[string]string)
 	for _, el := range doc.FindAll("div") {
 		child := el.Pointer.FirstChild
 		var children []*html.Node
@@ -265,6 +267,16 @@ func extractAttributes(pdfData []byte) (map[string]string, error) {
 			children = append(children, child)
 			child = child.NextSibling
 		}
+		if lastKey == "Instelling" && len(children) == 1 && children[0].Type == html.TextNode {
+			// Sometimes, a property continues on the next line.
+			// This is a heuristic to determine this case: when the previous row
+			// was a valid row and this row contains just a single value, it's
+			// probably a continuation.
+			rawAttributes[lastKey] += " " + strings.TrimSpace(children[0].Data)
+			continue
+		}
+		lastKey = "" // not a continuation
+
 		if len(children) != 3 {
 			continue
 		}
@@ -272,12 +284,22 @@ func extractAttributes(pdfData []byte) (map[string]string, error) {
 			continue
 		}
 
+		// This appears to be a valid property key
 		key := strings.TrimSpace(children[0].Data)
 		value := strings.TrimSpace(children[2].Data)
+		rawAttributes[key] = value
+		lastKey = key
+	}
 
+	// Transform raw attributes in IRMA attributes, with standard names and
+	// value formatting.
+	attributes := make(map[string]string)
+	for key, value := range rawAttributes {
 		switch key {
 		case "Achternaam":
 			attributes["familyname"] = value
+		case "Tussenvoegsel":
+			attributes["prefix"] = value
 		case "Voorna(a)m(en)":
 			attributes["firstname"] = value
 		case "Geslacht":
@@ -291,14 +313,36 @@ func extractAttributes(pdfData []byte) (map[string]string, error) {
 			}
 		case "Geboortedatum":
 			attributes["dateofbirth"] = parseDutchDate(value) // "" if parse error
+		case "Soort waardedocument":
+			// skip
 		case "Opleiding":
 			attributes["education"] = value
-		case "Behaald in":
-			attributes["achieved"] = parseDutchMonth(value) // "" if parse error
+		case "Aard van het examen":
+			attributes["degree"] = value
+		case "Profiel": // high school
+			attributes["profile"] = value
+		case "Behaald in", "Behaald op":
+			date := parseDutchDate(value)
+			if date == "" {
+				date = parseDutchMonth(value)
+			}
+			if enableDebug && date == "" {
+				fmt.Printf("Cannot parse date: %s\n", value)
+			}
+			attributes["achieved"] = date // "" if parse error
 		case "Instelling":
-			// TODO: format looks like "<name> in <city>", maybe we should split
-			// this attribute in two.
-			attributes["institute"] = value
+			// Format: <name> in <city>
+			// where <city> is in all caps.
+			in := strings.LastIndex(value, " in ")
+			if in < 0 {
+				continue // cannot parse
+			}
+			attributes["institute"] = strings.TrimSpace(value[:in])
+			attributes["city"] = strings.TrimSpace(value[in+4:]) // all uppercase
+		default:
+			if enableDebug && key != "" {
+				fmt.Printf("Unknown property: %s = %s\n", key, value)
+			}
 		}
 	}
 
@@ -347,7 +391,8 @@ func parseDutchMonth(indate string) string {
 	if month == 0 || year == 0 {
 		return "" // something went wrong
 	}
-	return fmt.Sprintf("%02d-%04d", month, year)
+	// Pick the first day of the month.
+	return fmt.Sprintf("01-%02d-%04d", month, year)
 }
 
 // Load an X.509 certificate from a file in DER format.
