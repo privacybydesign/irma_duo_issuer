@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+
+<html lang="nl">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Diploma</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <meta value="https://privacybydesign.foundation/tomcat/irma_api_server/server/" name="irma-web-server">
+        <meta value="https://privacybydesign.foundation/tomcat/irma_api_server/api/v2/" name="irma-api-server">
+        <!--
+        <meta name="irma-web-server" value="https://demo.irmacard.org/tomcat/irma_api_server/server/">
+        <meta name="irma-api-server" value="https://demo.irmacard.org/tomcat/irma_api_server/api/v2/">
+        -->
+
+
+        <link rel="stylesheet" href="https://privacybydesign.foundation/tomcat/irma_api_server/bower_components/bootstrap/dist/css/bootstrap.min.css"/>
+
+        <script src="https://privacybydesign.foundation/tomcat/irma_api_server/bower_components/jquery/dist/jquery.js" defer></script>
+        <script src="https://privacybydesign.foundation/tomcat/irma_api_server/client/irma.js" defer></script>
+        <script src="messages.js" defer></script>
+        <script src="../common.js" defer></script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12 col-md-8 col-lg-6 col-md-offset-2 col-lg-offset-3">
+                    <h1>Diploma attributen</h1>
+
+                    <p>
+                        DUO stelt
+                        <a href="https://duo.nl/particulier/uittreksel-diplomagegevens-downloaden.jsp">gewaarmerkte digitale diploma's</a>
+                        ter beschikking. Wij zullen die gegevens verifiëren en
+                        de volgende attributen beschikbaar stellen:
+                    </p>
+
+                    <ul>
+                        <li>Naam (voor + achternaam), geslacht, geboortedatum.</li>
+                        <li>Instituut, studie, plaats en datum van de behaalde school, opleiding of studie.</li>
+                    </ul>
+
+                    <p>
+                        Om zeker te weten dat dit uw diploma is, hebben wij
+                        daarvoor uw geverifieerde naam en geboortedatum nodig.
+                        Wij bewaren geen gegevens: uw naam en de PDF worden
+                        alleen tijdens het issuen gebruikt en daarna verwijderd.
+                    </p>
+
+
+                    <p>
+                        <label id="btn-pdf" for="input-pdf" class="btn btn-primary">Upload diploma</label>
+                        <input id="input-pdf" type="file" accept="application/pdf" class="hidden"/><br/>
+                        Upload hier het diploma dat u heeft gedownload uit het
+                        <a href="https://mijn.overheid.nl/persoonlijkegegevens/diplomaregister/">diplomaregister van DUO</a>.
+                    </p>
+
+                    <p>
+                        <button id="btn-disclosure" class="btn btn-primary" disabled>Naam + geboortedatum vrijgeven</button><br/>
+                        U kunt deze attributen verkrijgen
+                        <a href="https://privacybydesign.foundation/uitgifte/idin/">via iDIN</a>.
+                    </p>
+                    <p>
+                        <button id="btn-issue" class="btn btn-primary">Issue!</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
+

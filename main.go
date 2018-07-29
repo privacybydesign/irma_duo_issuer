@@ -23,10 +23,12 @@ import (
 
 // Flags parsed at program startup and never modified afterwards.
 var (
-	tmpDir      string
-	certDir     string
-	enableDebug bool
-	keepOutput  bool
+	tmpDir          string
+	certDir         string
+	configDir       string
+	serverStaticDir string
+	enableDebug     bool
+	keepOutput      bool
 )
 
 type ExtractError struct {
@@ -39,16 +41,6 @@ func (e ExtractError) Error() string {
 		return e.Op
 	}
 	return e.Op + ": " + e.Err.Error()
-}
-
-// Utility function to read the entire contents of a file.
-func readFile(path string) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	return ioutil.ReadAll(file)
 }
 
 // Utility function to dump the structure of a PDF document. Very useful for
@@ -547,6 +539,8 @@ func main() {
 
 	flag.StringVar(&tmpDir, "tmpdir", "tmp", "Where to put temporary files for the pdf2htmlEX command")
 	flag.StringVar(&certDir, "certs", "certs", "Parent certificate directory (*.der)")
+	flag.StringVar(&configDir, "config", "config", "Directory with configuration files")
+	flag.StringVar(&serverStaticDir, "static", "static", "Static files to serve")
 	flag.BoolVar(&enableDebug, "debug", false, "Enable debug logging")
 	flag.BoolVar(&keepOutput, "keepoutput", false, "Do not remove temporary files")
 	flag.Parse()
@@ -556,6 +550,8 @@ func main() {
 		return
 	}
 	switch flag.Arg(0) {
+	case "help", "usage":
+		flag.Usage()
 	case "read", "extract": // not sure what to call this
 		if flag.NArg() < 2 {
 			fmt.Fprintln(flag.CommandLine.Output(), "Provide at least one PDF path to \"read\".")
@@ -563,8 +559,13 @@ func main() {
 			return
 		}
 		cmdReadPDFs(flag.Args()[1:])
-	case "help", "usage":
-		flag.Usage()
+	case "server":
+		if flag.NArg() != 2 {
+			fmt.Fprintln(flag.CommandLine.Output(), "Provide a host:port to bind to for \"server\".")
+			flag.Usage()
+			return
+		}
+		cmdServe(flag.Arg(1))
 	default:
 		fmt.Fprintln(flag.CommandLine.Output(), "Unknown command:", flag.Arg(0))
 		flag.Usage()
