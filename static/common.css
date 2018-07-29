@@ -1,0 +1,11 @@
+
+.checkmark {
+	content: '✔';
+	color: green;
+	font-size: 2rem;
+	display: none;
+}
+
+.checkmark.visible {
+	display: inline;
+}

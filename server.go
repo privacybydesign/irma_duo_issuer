@@ -12,8 +12,9 @@ import (
 	"github.com/privacybydesign/irmago"
 )
 
-func sendErrorResponse(w http.ResponseWriter, code string) {
-	w.Write([]byte("error:" + code))
+func sendErrorResponse(w http.ResponseWriter, httpCode int, errorCode string) {
+	w.WriteHeader(httpCode)
+	w.Write([]byte("error:" + errorCode))
 }
 
 func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
@@ -40,14 +41,14 @@ func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
 	sk, err := readPrivateKey(configDir + "/sk.pem")
 	if err != nil {
 		log.Println("cannot open private key:", err)
-		sendErrorResponse(w, "signing")
+		sendErrorResponse(w, 500, "signing")
 		return
 	}
 
 	text, err := jwt.Sign("duo", sk)
 	if err != nil {
 		log.Println("cannot create disclosure JWT:", err)
-		sendErrorResponse(w, "signing")
+		sendErrorResponse(w, 500, "signing")
 		return
 	}
 	w.Write([]byte(text))
@@ -55,32 +56,32 @@ func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
 
 func apiIssue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		sendErrorResponse(w, "invalid-method")
+		sendErrorResponse(w, 405, "invalid-method")
 		return
 	}
 	// Accept files of up to 1MB. The sample PDFs I've used are all 520-550kB so
 	// this should be enough.
 	err := r.ParseMultipartForm(1024 * 1024) // 1MB
 	if err != nil {
-		sendErrorResponse(w, "file-too-big")
+		sendErrorResponse(w, 413, "file-too-big")
 		return
 	}
 	file, _, err := r.FormFile("pdf")
 	if err != nil {
-		sendErrorResponse(w, "no-pdf-file")
+		sendErrorResponse(w, 400, "no-pdf-file")
 		return
 	}
 	defer file.Close()
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
-		sendErrorResponse(w, "readfile")
+		sendErrorResponse(w, 500, "readfile")
 		return
 	}
 
 	attributeSets, err := verifyAndExtract(data)
 	if err != nil {
 		log.Println("failed to extract attributes from PDF:", err)
-		sendErrorResponse(w, "extract")
+		sendErrorResponse(w, 400, "extract")
 		return
 	}
 
@@ -112,7 +113,7 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 	sk, err := readPrivateKey(configDir + "/sk.pem")
 	if err != nil {
 		log.Println("cannot open private key:", err)
-		sendErrorResponse(w, "signing")
+		sendErrorResponse(w, 500, "signing")
 		return
 	}
 
@@ -123,6 +124,11 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	text, err := jwt.Sign("duo", sk)
+	if err != nil {
+		log.Println("cannot sign signature request:", err)
+		sendErrorResponse(w, 500, "signing")
+		return
+	}
 
 	w.Write([]byte(text))
 }
