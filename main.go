@@ -259,7 +259,7 @@ func extractAttributes(pdfData []byte) ([]map[string]string, error) {
 	doc := soup.HTMLParse(string(htmlData))
 	body := doc.Find("body")
 	var container soup.Root
-	for _, child := range getSoupChildren(body) {
+	for _, child := range body.Children() {
 		if child.Attrs()["id"] == "page-container" {
 			container = child
 		}
@@ -268,7 +268,7 @@ func extractAttributes(pdfData []byte) ([]map[string]string, error) {
 		return nil, &ExtractError{"cannot parse HTML: cannot find page container", nil}
 	}
 	attributeSet := make([]map[string]string, 0, 1)
-	for _, page := range getSoupChildren(container) {
+	for _, page := range container.Children() {
 		if page.Pointer.Type != html.ElementNode {
 			continue
 		}
@@ -289,7 +289,7 @@ func extractSinglePage(page soup.Root) (map[string]string, error) {
 	lastKey := ""
 	rawAttributes := make(map[string]string)
 	for _, el := range page.FindAll("div") {
-		children := getSoupChildren(el)
+		children := el.Children()
 		if lastKey == "Instelling" && len(children) == 1 && children[0].Pointer.Type == html.TextNode {
 			// Sometimes, a property continues on the next line.
 			// This is a heuristic to determine this case: when the previous row
@@ -402,16 +402,6 @@ func extractSinglePage(page soup.Root) (map[string]string, error) {
 	}
 
 	return attributes, nil
-}
-
-func getSoupChildren(el soup.Root) []soup.Root {
-	child := el.Pointer.FirstChild
-	var children []soup.Root
-	for child != nil {
-		children = append(children, soup.Root{child, child.Data, nil})
-		child = child.NextSibling
-	}
-	return children
 }
 
 // List of Dutch months, as used in diploma dates.
