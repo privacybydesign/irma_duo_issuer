@@ -1,5 +1,8 @@
 package main
 
+// This file provides the main API for PDF verification and issuance. It also
+// serves a few static files from a directory (HTML/CSS/JS).
+
 import (
 	"io/ioutil"
 	"log"
