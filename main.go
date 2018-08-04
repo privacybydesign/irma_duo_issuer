@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/privacybydesign/irmago"
 )
 
 // Flags parsed at program startup and never modified afterwards.
@@ -15,6 +18,21 @@ var (
 	enableDebug     bool
 	keepOutput      bool
 )
+
+type Config struct {
+	FamilyNameAttributes  []irma.AttributeTypeIdentifier `json:"familyname_attributes"`
+	DateOfBirthAttributes []irma.AttributeTypeIdentifier `json:"dateofbirth_attributes"`
+}
+
+var config Config
+
+func readConfig() error {
+	data, err := readFile(configDir + "/config.json")
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, &config)
+}
 
 func main() {
 	flag.Usage = func() {
@@ -50,6 +68,11 @@ func main() {
 		if flag.NArg() != 2 {
 			fmt.Fprintln(flag.CommandLine.Output(), "Provide a host:port to bind to for \"server\".")
 			flag.Usage()
+			return
+		}
+		err := readConfig()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Could not read config file: "+err.Error())
 			return
 		}
 		cmdServe(flag.Arg(1))

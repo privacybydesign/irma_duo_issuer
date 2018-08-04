@@ -17,20 +17,24 @@ func sendErrorResponse(w http.ResponseWriter, httpCode int, errorCode string) {
 	w.Write([]byte("error:" + errorCode))
 }
 
+func getAttribute(disjunction *irma.AttributeDisjunction, identifiers []irma.AttributeTypeIdentifier) *string {
+	for _, identifier := range identifiers {
+		if value := disjunction.Values[identifier]; value != nil {
+			return value
+		}
+	}
+	return nil
+}
+
 func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
 	disjunction := irma.AttributeDisjunctionList{
 		{
-			Label: "Family name",
-			Attributes: []irma.AttributeTypeIdentifier{
-				irma.NewAttributeTypeIdentifier("pbdf.pbdf.idin.familyname"),
-				irma.NewAttributeTypeIdentifier("pbdf.pbdf.surfnet.familyname"),
-			},
+			Label:      "Family name",
+			Attributes: config.FamilyNameAttributes,
 		},
 		{
-			Label: "Date of birth",
-			Attributes: []irma.AttributeTypeIdentifier{
-				irma.NewAttributeTypeIdentifier("pbdf.pbdf.idin.dateofbirth"),
-			},
+			Label:      "Date of birth",
+			Attributes: config.DateOfBirthAttributes,
 		},
 	}
 	request := &irma.DisclosureRequest{
@@ -77,6 +81,13 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, 400, "attributes")
 		return
 	}
+	disclosedFamilyname := getAttribute(disclosedAttributes, config.FamilyNameAttributes)
+	disclosedDateOfBirth := getAttribute(disclosedAttributes, config.DateOfBirthAttributes)
+	if disclosedFamilyname == nil || disclosedDateOfBirth == nil {
+		log.Println("disjunction doesn't have the required attributes")
+		sendErrorResponse(w, 400, "attributes")
+		return
+	}
 
 	// Accept files of up to 1MB. The sample PDFs I've used are all 520-550kB so
 	// this should be enough.
@@ -104,26 +115,16 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	disclosedFamilyname := "<noname>"
-	if familyname := disclosedAttributes.Values[irma.NewAttributeTypeIdentifier("pbdf.pbdf.idin.familyname")]; familyname != nil {
-		disclosedFamilyname = *familyname
-	} else if familyname := disclosedAttributes.Values[irma.NewAttributeTypeIdentifier("pbdf.pbdf.surfnet.familyname")]; familyname != nil {
-		disclosedFamilyname = *familyname
-	}
-	disclosedDateOfBirth := "<nodate>"
-	if dateofbirth := disclosedAttributes.Values[irma.NewAttributeTypeIdentifier("pbdf.pbdf.idin.dateofbirth")]; dateofbirth != nil {
-		disclosedDateOfBirth = *dateofbirth
-	}
 	for _, attributes := range attributeSets {
 		familyname := attributes["familyname"]
 		if attributes["prefix"] != "" {
 			familyname = attributes["prefix"] + " " + familyname
 		}
-		if familyname != disclosedFamilyname {
+		if familyname != *disclosedFamilyname {
 			sendErrorResponse(w, 400, "name-match")
 			return
 		}
-		if attributes["dateofbirth"] != disclosedDateOfBirth {
+		if attributes["dateofbirth"] != *disclosedDateOfBirth {
 			sendErrorResponse(w, 400, "dateofbirth-match")
 			return
 		}
