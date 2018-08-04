@@ -1,0 +1,9 @@
+{
+  "familyname_attributes": [
+    "pbdf.pbdf.idin.familyname",
+    "pbdf.pbdf.surfnet.familyname"
+  ],
+  "dateofbirth_attributes": [
+    "pbdf.pbdf.idin.dateofbirth"
+  ]
+}
