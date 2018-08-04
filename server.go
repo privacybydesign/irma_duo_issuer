@@ -23,6 +23,7 @@ func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
 			Label: "Family name",
 			Attributes: []irma.AttributeTypeIdentifier{
 				irma.NewAttributeTypeIdentifier("pbdf.pbdf.idin.familyname"),
+				irma.NewAttributeTypeIdentifier("pbdf.pbdf.surfnet.familyname"),
 			},
 		},
 		{
@@ -59,9 +60,27 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, 405, "invalid-method")
 		return
 	}
+
+	// TODO: cache, or load on startup
+	pk, err := readPublicKey(configDir + "/apiserver-pk.pem")
+	if err != nil {
+		log.Println("cannot open public key of API server:", err)
+		sendErrorResponse(w, 500, "attributes")
+		return
+	}
+
+	attributesJwt := r.FormValue("attributes")
+	disclosedAttributes := &irma.AttributeDisjunction{}
+	err = disclosedAttributes.ParseJwt(attributesJwt, pk, 0, "disclosure_result")
+	if err != nil {
+		log.Println("cannot parse attribute:", err)
+		sendErrorResponse(w, 400, "attributes")
+		return
+	}
+
 	// Accept files of up to 1MB. The sample PDFs I've used are all 520-550kB so
 	// this should be enough.
-	err := r.ParseMultipartForm(1024 * 1024) // 1MB
+	err = r.ParseMultipartForm(1024 * 1024) // 1MB
 	if err != nil {
 		sendErrorResponse(w, 413, "file-too-big")
 		return
@@ -85,7 +104,30 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: verify name
+	disclosedFamilyname := "<noname>"
+	if familyname := disclosedAttributes.Values[irma.NewAttributeTypeIdentifier("pbdf.pbdf.idin.familyname")]; familyname != nil {
+		disclosedFamilyname = *familyname
+	} else if familyname := disclosedAttributes.Values[irma.NewAttributeTypeIdentifier("pbdf.pbdf.surfnet.familyname")]; familyname != nil {
+		disclosedFamilyname = *familyname
+	}
+	disclosedDateOfBirth := "<nodate>"
+	if dateofbirth := disclosedAttributes.Values[irma.NewAttributeTypeIdentifier("pbdf.pbdf.idin.dateofbirth")]; dateofbirth != nil {
+		disclosedDateOfBirth = *dateofbirth
+	}
+	for _, attributes := range attributeSets {
+		familyname := attributes["familyname"]
+		if attributes["prefix"] != "" {
+			familyname = attributes["prefix"] + " " + familyname
+		}
+		if familyname != disclosedFamilyname {
+			sendErrorResponse(w, 400, "name-match")
+			return
+		}
+		if attributes["dateofbirth"] != disclosedDateOfBirth {
+			sendErrorResponse(w, 400, "dateofbirth-match")
+			return
+		}
+	}
 
 	var disjunction irma.AttributeDisjunctionList
 	for _, attributes := range attributeSets {
