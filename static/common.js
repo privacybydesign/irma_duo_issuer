@@ -2,6 +2,8 @@
 
 var API = '/api/';
 
+var disclosureJWT;
+
 function init() {
     $('#btn-disclosure')
         .on('click', requestAttributes)
@@ -14,7 +16,7 @@ function init() {
 
 function updateButtons(e) {
     var hasPDF = $('#input-pdf').val();
-    var hasName = true; // TODO
+    var hasName = disclosureJWT;
     if (hasPDF && hasName) {
         $('#btn-issue').prop('disabled', false);
     } else {
@@ -25,6 +27,11 @@ function updateButtons(e) {
     } else {
         $('#btn-pdf + .checkmark').removeClass('visible');
     }
+    if (hasName) {
+        $('#btn-disclosure + .checkmark').addClass('visible');
+    } else {
+        $('#btn-disclosure + .checkmark').removeClass('visible');
+    }
 }
 
 function requestAttributes() {
@@ -34,8 +41,10 @@ function requestAttributes() {
     }).done(function(jwt) {
         console.log('JWT:', jwt);
         IRMA.verify(jwt,
-            function(disclosureJWT) { // success
-                console.log('disclosure JWT:', disclosureJWT);
+            function(jwt2) { // success
+                console.log('disclosure JWT:', jwt2);
+                disclosureJWT = jwt2;
+                updateButtons();
             }, function() { // cancel
                 console.warn('cancelled!');
             }, function(errormsg) {
@@ -50,6 +59,7 @@ function startIssue(e) {
     e.target.disabled = true;
     var fd = new FormData();
     fd.append('pdf', $('#input-pdf').prop('files')[0]);
+    fd.append('attributes', disclosureJWT);
     setStatus('info', MESSAGES['uploading']);
     $.ajax({
         url: API + 'issue',
