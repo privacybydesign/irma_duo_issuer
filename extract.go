@@ -337,7 +337,7 @@ func extractSinglePage(page soup.Root) (map[string]string, error) {
 			attributes["degree"] = value
 		case "Profiel":
 			// high school (e.g. Nieuw Profiel Natuur en Techniek)
-			attributes["degree"] = value
+			attributes["profile"] = value
 		case "Behaald in", "Behaald op":
 			date := parseDutchDate(value)
 			if date == "" {
@@ -374,7 +374,7 @@ func extractSinglePage(page soup.Root) (map[string]string, error) {
 		"gender":      true,
 		"dateofbirth": true,
 		"education":   true,
-		"degree":      true,
+		"degree":      false,
 		"profile":     false,
 		"achieved":    true,
 		"institute":   true,

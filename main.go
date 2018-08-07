@@ -38,7 +38,7 @@ func readConfig() error {
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s <command> [args...]\n", os.Args[0])
-		fmt.Fprintln(flag.CommandLine.Output(), "Available commands: read")
+		fmt.Fprintln(flag.CommandLine.Output(), "Available commands: help, read, server")
 		fmt.Fprintln(flag.CommandLine.Output(), "Flags:")
 		flag.PrintDefaults()
 	}
