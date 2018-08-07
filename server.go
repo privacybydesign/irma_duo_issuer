@@ -29,6 +29,10 @@ func getAttribute(disjunction *irma.AttributeDisjunction, identifiers []irma.Att
 func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
 	disjunction := irma.AttributeDisjunctionList{
 		{
+			Label:      "Initials",
+			Attributes: config.InitialsAttributes,
+		},
+		{
 			Label:      "Family name",
 			Attributes: config.FamilyNameAttributes,
 		},
@@ -81,9 +85,10 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, 400, "attributes")
 		return
 	}
+	disclosedInitials := getAttribute(disclosedAttributes, config.InitialsAttributes)
 	disclosedFamilyname := getAttribute(disclosedAttributes, config.FamilyNameAttributes)
 	disclosedDateOfBirth := getAttribute(disclosedAttributes, config.DateOfBirthAttributes)
-	if disclosedFamilyname == nil || disclosedDateOfBirth == nil {
+	if disclosedInitials == nil || disclosedFamilyname == nil || disclosedDateOfBirth == nil {
 		log.Println("disjunction doesn't have the required attributes")
 		sendErrorResponse(w, 400, "attributes")
 		return
@@ -120,7 +125,12 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 		if attributes["prefix"] != "" {
 			familyname = attributes["prefix"] + " " + familyname
 		}
-		if familyname != *disclosedFamilyname {
+		if len(attributes["firstname"]) == 0 || len(*disclosedInitials) == 0 {
+			// This is very unlikely.
+			sendErrorResponse(w, 400, "no-initials")
+			return
+		}
+		if familyname != *disclosedFamilyname || attributes["firstname"][0] != (*disclosedInitials)[0] {
 			sendErrorResponse(w, 400, "name-match")
 			return
 		}

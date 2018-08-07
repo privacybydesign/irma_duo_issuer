@@ -1,7 +1,9 @@
 {
+  "initials_attributes": [
+    "pbdf.pbdf.idin.initials"
+  ],
   "familyname_attributes": [
-    "pbdf.pbdf.idin.familyname",
-    "pbdf.pbdf.surfnet.familyname"
+    "pbdf.pbdf.idin.familyname"
   ],
   "dateofbirth_attributes": [
     "pbdf.pbdf.idin.dateofbirth"
