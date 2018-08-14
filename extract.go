@@ -174,7 +174,14 @@ func verifySignature(sigData []byte, pool *x509.CertPool) ([]byte, error) {
 
 	// Verify the loaded signature.
 	// Use the intermediary certificate as a root certificate.
-	_, err = sig.Verify(pool)
+	verifyOpts := x509.VerifyOptions{
+		Intermediates: x509.NewCertPool(),
+		Roots:         pool,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageAny,
+		},
+	}
+	_, err = sig.Verify(verifyOpts)
 	if err != nil {
 		return nil, err
 	}
