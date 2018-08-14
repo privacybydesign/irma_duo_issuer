@@ -17,10 +17,14 @@ func sendErrorResponse(w http.ResponseWriter, httpCode int, errorCode string) {
 	w.Write([]byte("error:" + errorCode))
 }
 
-func getAttribute(disjunction *irma.AttributeDisjunction, identifiers []irma.AttributeTypeIdentifier) *string {
+func getAttribute(attributes map[irma.AttributeTypeIdentifier]irma.TranslatedString, identifiers []irma.AttributeTypeIdentifier) *string {
 	for _, identifier := range identifiers {
-		if value := disjunction.Values[identifier]; value != nil {
-			return value
+		if value, ok := attributes[identifier]; ok {
+			// Language should not matter here.
+			// If it matters, the Dutch format should be picked anyway as the
+			// diplomas themselves are in Dutch.
+			s := value["nl"]
+			return &s
 		}
 	}
 	return nil
@@ -78,8 +82,7 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	attributesJwt := r.FormValue("attributes")
-	disclosedAttributes := &irma.AttributeDisjunction{}
-	err = disclosedAttributes.ParseJwt(attributesJwt, pk, 0, "disclosure_result")
+	disclosedAttributes, err := irma.ParseDisclosureJwt(attributesJwt, pk)
 	if err != nil {
 		log.Println("cannot parse attribute:", err)
 		sendErrorResponse(w, 400, "attributes")
