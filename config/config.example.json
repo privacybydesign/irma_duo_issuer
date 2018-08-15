@@ -7,5 +7,6 @@
   ],
   "dateofbirth_attributes": [
     "pbdf.pbdf.idin.dateofbirth"
-  ]
+  ],
+  "duo_credential_id": "pbdf.pbdf.duo"
 }

@@ -144,7 +144,7 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validity := irma.Timestamp(irma.FloorToEpochBoundary(time.Now().AddDate(1, 0, 0)))
-	credid := irma.NewCredentialTypeIdentifier("pbdf.pbdf.duo")
+	credid := irma.NewCredentialTypeIdentifier(config.DUOCrendentialID)
 	var credentials []*irma.CredentialRequest
 	for _, attributes := range attributeSets {
 		credential := &irma.CredentialRequest{
