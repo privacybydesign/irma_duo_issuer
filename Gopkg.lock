@@ -128,7 +128,7 @@
     "internal/disable_sigpipe",
     "internal/fs"
   ]
-  revision = "6e08f2051522b2df6d41eb5abd2681aeb4cd167a"
+  revision = "e95d673380277eb5e2177610d5e1a0964435ee60"
 
 [[projects]]
   branch = "master"

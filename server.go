@@ -84,8 +84,12 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 	attributesJwt := r.FormValue("attributes")
 	disclosedAttributes, err := irma.ParseDisclosureJwt(attributesJwt, pk)
 	if err != nil {
-		log.Println("cannot parse attribute:", err)
-		sendErrorResponse(w, 400, "attributes")
+		if _, ok := err.(irma.ExpiredError); ok {
+			sendErrorResponse(w, 400, "attributes-expired")
+		} else {
+			log.Println("cannot parse attribute:", err)
+			sendErrorResponse(w, 400, "attributes")
+		}
 		return
 	}
 	disclosedInitials := getAttribute(disclosedAttributes, config.InitialsAttributes)

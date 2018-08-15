@@ -84,6 +84,10 @@ function startIssue(e) {
         e.target.disabled = false;
         console.error(xhr, xhr.responseText);
         setStatus('danger', MESSAGES['upload-error'], MESSAGES[xhr.responseText]);
+        if (xhr.responseText == 'error:attributes-expired') {
+            disclosureJWT = undefined;
+            updateButtons();
+        }
     });
 }
 
