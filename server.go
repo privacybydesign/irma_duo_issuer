@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"sort"
+	"time"
 
 	"github.com/privacybydesign/irmago"
 )
@@ -143,26 +143,16 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var disjunction irma.AttributeDisjunctionList
+	validity := irma.Timestamp(irma.FloorToEpochBoundary(time.Now().AddDate(1, 0, 0)))
+	credid := irma.NewCredentialTypeIdentifier("pbdf.pbdf.duo")
+	var credentials []*irma.CredentialRequest
 	for _, attributes := range attributeSets {
-		// Pretty-print attributes in the way they're extracted.
-		var keys []string
-		for key := range attributes {
-			keys = append(keys, key)
+		credential := &irma.CredentialRequest{
+			Validity:         &validity,
+			CredentialTypeID: &credid,
+			Attributes:       attributes,
 		}
-		sort.Strings(keys)
-		attrs := make([]irma.AttributeTypeIdentifier, 0, len(attributes))
-		vals := make(map[irma.AttributeTypeIdentifier]*string, len(attributes))
-		for _, key := range keys {
-			id := irma.NewAttributeTypeIdentifier("pbdf.pbdf.duo." + key)
-			attrs = append(attrs, id)
-			value := attributes[key]
-			vals[id] = &value
-		}
-		disjunction = append(disjunction, &irma.AttributeDisjunction{
-			Attributes: attrs,
-			Values:     vals,
-		})
+		credentials = append(credentials, credential)
 	}
 
 	// TODO: cache, or load on startup
@@ -173,12 +163,10 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jwt := irma.NewSignatureRequestorJwt("Privacy by Design Foundation", &irma.SignatureRequest{
-		Message: "diploma attributes from PDF",
-		DisclosureRequest: irma.DisclosureRequest{
-			Content: disjunction,
-		},
-	})
+	req := &irma.IssuanceRequest{
+		Credentials: credentials,
+	}
+	jwt := irma.NewIdentityProviderJwt("Privacy by Design Foundation", req)
 	text, err := jwt.Sign("duo", sk)
 	if err != nil {
 		log.Println("cannot sign signature request:", err)
