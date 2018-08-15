@@ -180,14 +180,15 @@
   revision = "14742f9018cd6651ec7364dc6ee08af0baaa1031"
 
 [[projects]]
-  branch = "master"
+  branch = "ignore-identity-encryption"
   name = "rsc.io/pdf"
   packages = ["."]
-  revision = "c47d69cf462f804ff58ca63c61a8fb2aed76587e"
+  revision = "03f2f489cec0738d12038e5909dde3fba84f68db"
+  source = "github.com/aykevl/pdf"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b8fa40eb5cf8aaa3eb02571a8ee0fc82f8e41e1e06cfd874de1c1b0fca7a2e6f"
+  inputs-digest = "920e756fc5cfd34293a944501596efc7da346a6ebcca210e38cce5871e97acdd"
   solver-name = "gps-cdcl"
   solver-version = 1

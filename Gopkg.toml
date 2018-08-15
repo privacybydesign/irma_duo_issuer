@@ -42,8 +42,9 @@
   name = "golang.org/x/net"
 
 [[constraint]]
-  branch = "master"
+  branch = "ignore-identity-encryption"
   name = "rsc.io/pdf"
+  source = "github.com/aykevl/pdf"
 
 # Version v1.1 that dep currently fetches without this stanza breaks compilation
 # TODO remove this once a version is released of bolthold that includes e4f6b42
