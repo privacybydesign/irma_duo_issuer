@@ -1,2 +1,6 @@
 vendor/
 irma_duo_issuer
+config/apiserver-pk.pem
+config/pk.pem
+config/sk.pem
+config/config.json
