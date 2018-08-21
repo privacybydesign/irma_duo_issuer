@@ -136,22 +136,16 @@ func verifyPDF(inputPDF []byte, pool *x509.CertPool) ([]byte, error) {
 	hashInst := sha1.New()
 	hashInst.Write(before)
 	hashInst.Write(after)
-	hash1 := hashInst.Sum(nil)
+	hash := hashInst.Sum(nil)
 
-	// And verify the signature with the hash we just calculated.
-	hash2, err := verifySignature([]byte(sigDataValue.RawString()), pool)
-	if err != nil {
+	// And verify the signature over the hash we just calculated.
+	if err := verifySignature([]byte(sigDataValue.RawString()), pool, hash); err != nil {
 		return nil, err
 	}
 
-	// Check whether the verified hash matches the hash we calculated ourselves.
-	if bytes.Compare(hash1, hash2) != 0 {
-		return nil, errors.New("verifyPDF: could not verify signature: hash doesn't match")
-	}
-
 	// At this point, the data in "before" and "after" is verified so we can
-	// trust it. But we can't trust the original PDF, so we'll build a new one
-	// from the trusted data.
+	// trust it. But we can't trust the original PDF, because it might contain unsigned data -
+	// so we'll build a new one from only the signed, trusted data.
 
 	// Build a new PDF with only trusted data.
 	// It would be more efficient to zero out the untrusted parts, but copying
@@ -163,13 +157,13 @@ func verifyPDF(inputPDF []byte, pool *x509.CertPool) ([]byte, error) {
 	return trustedPDF, nil
 }
 
-// verifySignature verifies the given signature and returns the signature data,
-// or returns an error on any error (including verification failure).
-func verifySignature(sigData []byte, pool *x509.CertPool) ([]byte, error) {
+// verifySignature verifies the given signature over the specified hash,
+// returning an error on any error (including verification failure).
+func verifySignature(sigData []byte, pool *x509.CertPool, foundHash []byte) error {
 	// Parse the PKCS#7 signature object.
 	sig, err := cms.ParseSignedData(sigData)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Verify the loaded signature.
@@ -183,15 +177,19 @@ func verifySignature(sigData []byte, pool *x509.CertPool) ([]byte, error) {
 	}
 	_, err = sig.Verify(verifyOpts)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	data, err := sig.GetData() // hash of parts of the PDF
+	data, err := sig.GetData() // hash of signed parts of the PDF
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return data, nil // success, return the signed data
+	// Check whether the signed hash matches the hash we calculated ourselves.
+	if bytes.Compare(foundHash, data) != 0 {
+		return errors.New("verifySignature: could not verify signature: hash doesn't match")
+	}
+	return nil
 }
 
 // Extracts all attributes from a PDF file for use by IRMA, by first converting
@@ -476,12 +474,12 @@ func verifyAndExtract(pdfData []byte) ([]map[string]string, error) {
 		pool.AddCert(parentCert)
 	}
 
-	data, err := verifyPDF(pdfData, pool)
+	verifiedData, err := verifyPDF(pdfData, pool)
 	if err != nil {
 		return nil, &ExtractError{"verify PDF", err}
 	}
 
-	attributeSet, err := extractAttributes(data)
+	attributeSet, err := extractAttributes(verifiedData)
 	if err != nil {
 		return nil, &ExtractError{"extract attributes", err}
 	}
