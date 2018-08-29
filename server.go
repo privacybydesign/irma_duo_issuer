@@ -68,7 +68,7 @@ func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiIssue(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		sendErrorResponse(w, 405, "invalid-method")
 		return
 	}
@@ -95,11 +95,6 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 	disclosedInitials := getAttribute(disclosedAttributes, config.InitialsAttributes)
 	disclosedFamilyname := getAttribute(disclosedAttributes, config.FamilyNameAttributes)
 	disclosedDateOfBirth := getAttribute(disclosedAttributes, config.DateOfBirthAttributes)
-	if disclosedInitials == nil || disclosedFamilyname == nil || disclosedDateOfBirth == nil {
-		log.Println("disjunction doesn't have the required attributes")
-		sendErrorResponse(w, 400, "attributes")
-		return
-	}
 
 	// Accept files of up to 1MB. The sample PDFs I've used are all 520-550kB so
 	// this should be enough.

@@ -117,6 +117,9 @@ func verifyPDF(inputPDF []byte, pool *x509.CertPool) ([]byte, error) {
 	}
 
 	// Are these byteRange values somewhat sane?
+	// Note that this is just a quick and small (incomplete) sanity check for
+	// the input byte ranges. The real check is below when the verified (and
+	// thus trusted) byte ranges are copied and put in a new PDF.
 	if byteRange[0] != 0 || byteRange[2]+byteRange[3] != int64(len(inputPDF)) {
 		return nil, errors.New("verifyPDF: byte ranges don't cover the entire PDF")
 	}
@@ -249,15 +252,20 @@ func extractAttributes(pdfData []byte) ([]map[string]string, error) {
 	// PDF document.
 	doc := soup.HTMLParse(string(htmlData))
 	body := doc.Find("body")
+
+	// All pages are enclosed in an element with ID "page-container". The page
+	// container contains the individual PDF pages.
 	var container soup.Root
 	for _, child := range body.Children() {
 		if child.Attrs()["id"] == "page-container" {
 			container = child
+			break
 		}
 	}
 	if container.Pointer == nil {
 		return nil, &ExtractError{"cannot parse HTML: cannot find page container", nil}
 	}
+
 	attributeSet := make([]map[string]string, 0, 1)
 	for _, page := range container.Children() {
 		if page.Pointer.Type != html.ElementNode {
