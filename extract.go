@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -455,7 +456,11 @@ func loadCertificate(path string) (*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	return x509.ParseCertificate(intermediaryData)
+	block, _ := pem.Decode(intermediaryData)
+	if block == nil {
+		return nil, errors.New("failed to read PEM certificate")
+	}
+	return x509.ParseCertificate(block.Bytes)
 }
 
 // Take PDF data in as a byte array, verify it, and return its attributes.
@@ -464,7 +469,7 @@ func verifyAndExtract(pdfData []byte) ([]map[string]string, error) {
 	// Load parent certificates from DUO.
 	// TODO: cache this.
 	pool := x509.NewCertPool()
-	pattern := certDir + "/*.der"
+	pattern := certDir + "/*.pem"
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, ExtractError{"read certificate dir", err}
