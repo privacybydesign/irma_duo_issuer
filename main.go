@@ -24,6 +24,7 @@ type Config struct {
 	FamilyNameAttributes  []irma.AttributeTypeIdentifier `json:"familyname_attributes"`
 	DateOfBirthAttributes []irma.AttributeTypeIdentifier `json:"dateofbirth_attributes"`
 	DUOCrendentialID      string                         `json:"duo_credential_id"`
+	CORSDomain            string                         `json:"cors_domain"`
 }
 
 var config Config

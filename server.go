@@ -65,6 +65,10 @@ func requireValue(disjunction *irma.AttributeDisjunction, value *string) {
 }
 
 func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
+	if config.CORSDomain != "" {
+		w.Header().Set("Access-Control-Allow-Origin", config.CORSDomain)
+	}
+
 	request := &irma.DisclosureRequest{
 		Content: requiredAttributes(nil, nil, nil),
 	}
@@ -88,6 +92,10 @@ func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiIssue(w http.ResponseWriter, r *http.Request) {
+	if config.CORSDomain != "" {
+		w.Header().Set("Access-Control-Allow-Origin", config.CORSDomain)
+	}
+
 	if r.Method != http.MethodPost {
 		sendErrorResponse(w, 405, "invalid-method")
 		return
