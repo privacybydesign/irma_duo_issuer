@@ -30,8 +30,8 @@ func getAttribute(attributes map[irma.AttributeTypeIdentifier]irma.TranslatedStr
 	return nil
 }
 
-func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
-	disjunction := irma.AttributeDisjunctionList{
+func requiredAttributes(initials, familyname, dob *string) irma.AttributeDisjunctionList {
+	disjunctions := irma.AttributeDisjunctionList{
 		{
 			Label:      "Initials",
 			Attributes: config.InitialsAttributes,
@@ -45,8 +45,28 @@ func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
 			Attributes: config.DateOfBirthAttributes,
 		},
 	}
+	if initials != nil {
+		requireValue(disjunctions[0], initials)
+	}
+	if familyname != nil {
+		requireValue(disjunctions[1], familyname)
+	}
+	if dob != nil {
+		requireValue(disjunctions[2], dob)
+	}
+	return disjunctions
+}
+
+func requireValue(disjunction *irma.AttributeDisjunction, value *string) {
+	disjunction.Values = map[irma.AttributeTypeIdentifier]*string{}
+	for _, attr := range disjunction.Attributes {
+		disjunction.Values[attr] = value
+	}
+}
+
+func apiRequestAttrs(w http.ResponseWriter, r *http.Request) {
 	request := &irma.DisclosureRequest{
-		Content: disjunction,
+		Content: requiredAttributes(nil, nil, nil),
 	}
 	jwt := irma.NewServiceProviderJwt("Privacy by Design Foundation", request)
 
@@ -164,6 +184,7 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 
 	req := &irma.IssuanceRequest{
 		Credentials: credentials,
+		Disclose:    requiredAttributes(disclosedInitials, disclosedFamilyname, disclosedDateOfBirth),
 	}
 	jwt := irma.NewIdentityProviderJwt("Privacy by Design Foundation", req)
 	text, err := jwt.Sign("duo", sk)
