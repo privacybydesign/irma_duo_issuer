@@ -8,6 +8,7 @@ function init() {
     $('#btn-disclosure')
         .on('click', requestAttributes);
     $('#input-pdf')
+        .on('click', clearStatus)
         .on('change', updateUI);
     $('#btn-issue')
         .on('click', startIssue);
@@ -24,7 +25,6 @@ function updateUI(e) {
     } else {
         stage = 3;
     }
-    console.log('stage:', stage);
     $('#btn-disclosure')
         .prop('disabled', stage < 2);
     $('#btn-issue')
@@ -38,6 +38,7 @@ function updateUI(e) {
 }
 
 function requestAttributes() {
+    clearStatus();
     console.log('requesting attributes...');
     $.ajax({
         url: API + 'request-attrs',
@@ -94,6 +95,12 @@ function startIssue(e) {
     });
 }
 
+// Clear alert box at the top of the screen.
+function clearStatus() {
+    var alert = $('#result-alert');
+    alert.addClass('hidden');
+}
+
 // Show progress in the alert box.
 function setStatus(alertType, message, errormsg) {
     console.log('user message: ' + alertType + ': ' + message);
@@ -102,7 +109,7 @@ function setStatus(alertType, message, errormsg) {
         errormsg = errormsg.status + ' ' + errormsg.statusText;
     }
 
-    var alert = $('#result-alert')
+    var alert = $('#result-alert');
     alert.removeClass('alert-success'); // remove all 4 alert types
     alert.removeClass('alert-info');
     alert.removeClass('alert-warning');
