@@ -16,6 +16,7 @@
 	counter-increment: steps-counter;
 	position: absolute;
 	left: -3em;
+	top: 0.3em;
 	width: 2em;
 	height: 2em;
 	line-height: 2em;
