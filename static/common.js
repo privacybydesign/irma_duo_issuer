@@ -77,7 +77,7 @@ function startIssue(e) {
                 setStatus('success', MESSAGES['finished']);
                 e.target.disabled = false;
             }, function() { // cancel
-                setStatus('cancel');
+                setStatus('warning', MESSAGES['issue-cancel']);
                 e.target.disabled = false;
             }, function(errormsg) {
                 setStatus('danger', MESSAGES['issue-error'], errormsg);

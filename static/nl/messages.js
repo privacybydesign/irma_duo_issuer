@@ -11,6 +11,7 @@ var MESSAGES = {
   'error:attributes': 'Er is een probleem met de vrijgegeven attributen.',
   'error:attributes-expired': 'De vrijgegeven attributen zijn verlopen - geef de attributen opnieuw vrij.',
   'issuing': 'Attributen worden uitgegeven...',
+  'issue-cancel': 'Uitgifte geannuleerd',
   'issue-error': 'Kan deze attributen niet vrijgeven',
   'finished': 'Success',
 };
