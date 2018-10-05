@@ -6,31 +6,34 @@ var disclosureJWT;
 
 function init() {
     $('#btn-disclosure')
-        .on('click', requestAttributes)
-        .prop('disabled', false);
+        .on('click', requestAttributes);
     $('#input-pdf')
-        .on('change', updateButtons);
+        .on('change', updateUI);
     $('#btn-issue')
         .on('click', startIssue);
 }
 
-function updateButtons(e) {
-    var hasPDF = $('#input-pdf').val();
-    var hasName = disclosureJWT;
-    if (hasPDF && hasName) {
-        $('#btn-issue').prop('disabled', false);
+function updateUI(e) {
+    var hasPDF = Boolean($('#input-pdf').val());
+    var hasName = Boolean(disclosureJWT);
+    var stage;
+    if (!hasPDF) {
+        stage = 1;
+    } else if (hasPDF && !hasName) {
+        stage = 2;
     } else {
-        $('#btn-issue').prop('disabled', true);
+        stage = 3;
     }
-    if (hasPDF) {
-        $('#btn-pdf + .checkmark').addClass('visible');
-    } else {
-        $('#btn-pdf + .checkmark').removeClass('visible');
-    }
-    if (hasName) {
-        $('#btn-disclosure + .checkmark').addClass('visible');
-    } else {
-        $('#btn-disclosure + .checkmark').removeClass('visible');
+    console.log('stage:', stage);
+    $('#btn-disclosure')
+        .prop('disabled', stage < 2);
+    $('#btn-issue')
+        .prop('disabled', stage < 3);
+    $('.steps > .step').removeClass('active');
+    $('.steps > .step').removeClass('finished');
+    $('.steps > .step-' + stage).addClass('active');
+    for (var finished = stage - 1; finished != 0; finished--) {
+        $('.steps > .step-' + finished).addClass('finished');
     }
 }
 
@@ -44,7 +47,7 @@ function requestAttributes() {
             function(jwt2) { // success
                 console.log('disclosure JWT:', jwt2);
                 disclosureJWT = jwt2;
-                updateButtons();
+                updateUI();
             }, function() { // cancel
                 console.warn('cancelled!');
             }, function(errormsg) {
@@ -86,7 +89,7 @@ function startIssue(e) {
         setStatus('danger', MESSAGES['upload-error'], MESSAGES[xhr.responseText]);
         if (xhr.responseText == 'error:attributes-expired') {
             disclosureJWT = undefined;
-            updateButtons();
+            updateUI();
         }
     });
 }
