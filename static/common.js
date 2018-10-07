@@ -1,6 +1,6 @@
 'use strict';
 
-var API = '/api/';
+var API = 'https://metrics.privacybydesign.foundation/duo/api/';
 
 var disclosureJWT;
 
