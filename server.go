@@ -151,17 +151,17 @@ func apiIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, attributes := range attributeSets {
-		familyname := attributes["familyname"]
-		if attributes["prefix"] != "" {
-			familyname = attributes["prefix"] + " " + familyname
-		}
 		if len(attributes["firstname"]) == 0 || len(*disclosedInitials) == 0 {
 			// This is very unlikely.
 			sendErrorResponse(w, 400, "no-initials")
 			return
 		}
-		if familyname != *disclosedFamilyname || attributes["firstname"][0] != (*disclosedInitials)[0] {
+		if attributes["familyname"] != *disclosedFamilyname &&
+			attributes["prefix"]+" "+attributes["familyname"] != *disclosedFamilyname {
 			sendErrorResponse(w, 400, "name-match")
+		}
+		if attributes["firstname"][0] != (*disclosedInitials)[0] {
+			sendErrorResponse(w, 400, "initials-match")
 			return
 		}
 		if attributes["dateofbirth"] != *disclosedDateOfBirth {
