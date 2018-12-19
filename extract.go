@@ -79,6 +79,9 @@ func printTree(v pdf.Value, indent int) {
 
 // Verify the signature contained in a PDF and return the verified PDF as a byte
 // slice.
+//
+// This function follows the signed PDF specification that you can read here:
+// https://www.adobe.com/devnet-docs/acrobatetk/tools/DigSig/Acrobat_DigitalSignatures_in_PDF.pdf
 func verifyPDF(inputPDF []byte, pool *x509.CertPool) ([]byte, error) {
 	// Open the PDF file.
 	r := bytes.NewReader(inputPDF)
@@ -130,21 +133,33 @@ func verifyPDF(inputPDF []byte, pool *x509.CertPool) ([]byte, error) {
 	after := inputPDF[byteRange[2] : byteRange[2]+byteRange[3]]
 
 	// Check for supported hash functions.
-	// Sadly, the PDFs we get are all hashed with SHA1 so we'll have to work
-	// with that.
-	if subfilter.Name() != "adbe.pkcs7.sha1" {
+	if subfilter.Name() == "adbe.pkcs7.sha1" {
+		// This is an old PDF, which is signed with SHA1. Unfortunately, we will
+		// need to support this version for a while.
+		// Let's do the hashing!
+		hashInst := sha1.New()
+		hashInst.Write(before)
+		hashInst.Write(after)
+		hash := hashInst.Sum(nil)
+
+		// And verify the signature over the hash we just calculated.
+		if err := verifySignature([]byte(sigDataValue.RawString()), pool, hash); err != nil {
+			return nil, err
+		}
+
+	} else if subfilter.Name() == "adbe.pkcs7.detached" {
+		// This is a newer PDF, which uses a more modern "detached" signature.
+		// The signed data from the PDF is inserted into a buffer which is then
+		// verified.
+		data := make([]byte, len(before)+len(after))
+		copy(data[:len(before)], before)
+		copy(data[len(before):], after)
+		if err := verifyDetachedSignature([]byte(sigDataValue.RawString()), pool, data); err != nil {
+			return nil, err
+		}
+
+	} else {
 		return nil, errors.New("verifyPDF: unimplemented subfilter: " + subfilter.Name())
-	}
-
-	// Let's do the hashing!
-	hashInst := sha1.New()
-	hashInst.Write(before)
-	hashInst.Write(after)
-	hash := hashInst.Sum(nil)
-
-	// And verify the signature over the hash we just calculated.
-	if err := verifySignature([]byte(sigDataValue.RawString()), pool, hash); err != nil {
-		return nil, err
 	}
 
 	// At this point, the data in "before" and "after" is verified so we can
@@ -194,6 +209,28 @@ func verifySignature(sigData []byte, pool *x509.CertPool, foundHash []byte) erro
 		return errors.New("verifySignature: could not verify signature: hash doesn't match")
 	}
 	return nil
+}
+
+// verifyDetachedSignature verifies the given message with the given message,
+// returning an error on any error (including verification failure).
+func verifyDetachedSignature(sigData []byte, pool *x509.CertPool, msg []byte) error {
+	// Parse the PKCS#7 signature object.
+	sig, err := cms.ParseSignedData(sigData)
+	if err != nil {
+		return err
+	}
+
+	// Verify the loaded signature.
+	// Use the intermediary certificate as a root certificate.
+	verifyOpts := x509.VerifyOptions{
+		Intermediates: x509.NewCertPool(),
+		Roots:         pool,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageAny,
+		},
+	}
+	_, err = sig.VerifyDetached(msg, verifyOpts)
+	return err
 }
 
 // Extracts all attributes from a PDF file for use by IRMA, by first converting
