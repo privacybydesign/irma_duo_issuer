@@ -1,0 +1,14 @@
+{
+  "name": "irma_duo_webclient",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "./build.sh"
+  },
+  "dependencies": {
+    "@privacybydesign/irmajs": "^0.1.5",
+    "bootstrap": "^3.3.7",
+    "jquery": "^3.4.1"
+  }
+}

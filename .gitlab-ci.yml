@@ -1,0 +1,40 @@
+stages:
+  - build
+
+before_script:
+  - set -euxo pipefail
+
+build-webapp:
+  image: privacybydesign/node_yarn:latest
+  stage: build
+  script:
+    - cd webapp
+    - yarn install
+    - cd ..
+    - mkdir -p artifacts/webapp
+    - ./webapp/build.sh en
+    - mv webapp/build artifacts/webapp/en
+    - ./webapp/build.sh nl
+    - mv webapp/build artifacts/webapp/nl
+  artifacts:
+    paths:
+      - artifacts/webapp
+
+build-server:
+  image: privacybydesign/golang_dep:latest
+  stage: build
+  variables:
+    GOOS: linux
+    GOARCH: amd64
+    CGO_ENABLED: 0
+    PACKAGE_NAME: github.com/privacybydesign/irma_duo_issuer
+  artifacts:
+    paths:
+      - artifacts/*
+  script:
+    - mkdir -p "$GOPATH/src/$(dirname "$PACKAGE_NAME")"
+    - ln -s "$CI_PROJECT_DIR" "$GOPATH/src/$PACKAGE_NAME"
+    - cd "$GOPATH/src/$PACKAGE_NAME"
+    - dep ensure -v
+    - mkdir -p artifacts
+    - go build -a -ldflags '-extldflags "-static"' -o "artifacts/duo-issuer" .

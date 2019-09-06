@@ -4,3 +4,6 @@ config/apiserver-pk.pem
 config/pk.pem
 config/sk.pem
 config/config.json
+webapp/build
+webapp/node_modules
+artifacts
